@@ -1,0 +1,44 @@
+networks:
+  network-gui:
+  network-api:
+
+volumes:
+  postgres_data:
+
+services:
+  postgres_db:
+    image: postgres
+    hostname: db
+    ports:
+      - 5432:5432
+    networks:
+      - network-gui
+      - network-api
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    environment:
+      - POSTGRES_USER=sasps_user
+      - POSTGRES_PASSWORD=sasps_pass
+      - POSTGRES_DB=moviedb
+  flask_api:
+    depends_on:
+      - postgres_db
+    build: ./services/backend_simple/
+    ports:
+      - 5000:5000
+    networks:
+      - network-api
+    environment:
+      - POSTGRES_USER=sasps_user
+      - POSTGRES_PASSWORD=sasps_pass
+      - POSTGRES_DB=moviedb
+  db_admin:
+    depends_on:
+      - postgres_db
+    image: adminer
+    hostname: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - network-gui
