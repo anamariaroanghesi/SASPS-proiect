@@ -18,7 +18,7 @@ export default function MovieCard({ movie, onAddToWatchlist, onRemoveFromWatchli
     onMarkViewed?.(movie);
   };
 
-  // Generate a pseudo-random gradient based on movie id
+  // Fallback gradient if no poster
   const gradients = [
     'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
     'linear-gradient(135deg, #2d132c 0%, #3e1f47 50%, #4a2c4a 100%)',
@@ -29,9 +29,26 @@ export default function MovieCard({ movie, onAddToWatchlist, onRemoveFromWatchli
   ];
   const gradient = gradients[movie.id % gradients.length];
 
+  const hasPoster = movie.poster_url;
+
   return (
     <Link to={`/movie/${movie.id}`} className="movie-card">
-      <div className="movie-card-poster" style={{ background: gradient }}>
+      <div 
+        className="movie-card-poster" 
+        style={{ background: hasPoster ? 'none' : gradient }}
+      >
+        {hasPoster ? (
+          <img 
+            src={movie.poster_url} 
+            alt={movie.title} 
+            className="movie-card-image"
+            loading="lazy"
+          />
+        ) : (
+          <div className="movie-card-title-overlay">
+            <span className="movie-initial">{movie.title?.charAt(0) || 'M'}</span>
+          </div>
+        )}
         <div className="movie-card-year">{movie.year}</div>
         <div className="movie-card-overlay">
           <div className="movie-card-actions">
@@ -55,9 +72,6 @@ export default function MovieCard({ movie, onAddToWatchlist, onRemoveFromWatchli
             )}
           </div>
         </div>
-        <div className="movie-card-title-overlay">
-          <span className="movie-initial">{movie.title?.charAt(0) || 'M'}</span>
-        </div>
       </div>
       <div className="movie-card-info">
         <h3 className="movie-card-title">{movie.title || movie.name}</h3>
@@ -70,4 +84,3 @@ export default function MovieCard({ movie, onAddToWatchlist, onRemoveFromWatchli
     </Link>
   );
 }
-

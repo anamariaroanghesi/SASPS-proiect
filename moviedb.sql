@@ -67,19 +67,20 @@ CREATE SEQUENCE movies_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
 CREATE TABLE "public"."movies" (
     "id" integer DEFAULT nextval('movies_id_seq') NOT NULL,
     "title" character varying(100) NOT NULL,
-    "year" numeric(4,0) NOT NULL
+    "year" numeric(4,0) NOT NULL,
+    "poster_url" character varying(500)
 )
 WITH (oids = false);
 
 CREATE UNIQUE INDEX movies_id_key ON public.movies USING btree (id);
 
-INSERT INTO "movies" ("id", "title", "year") VALUES
-(1,	'Interstellar',	2014),
-(2,	'Arrival',	2016),
-(3,	'Deadpool',	2016),
-(4,	'The Shawshank Redemption',	1994),
-(5,	'Pulp Fiction',	1994),
-(6,	'Inglorious Basterds',	2009);
+INSERT INTO "movies" ("id", "title", "year", "poster_url") VALUES
+(1,	'Interstellar',	2014, 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg'),
+(2,	'Arrival',	2016, 'https://image.tmdb.org/t/p/w500/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg'),
+(3,	'Deadpool',	2016, 'https://image.tmdb.org/t/p/w500/3E53WEZJqP6aM84D8CckXx4pIHw.jpg'),
+(4,	'The Shawshank Redemption',	1994, 'https://image.tmdb.org/t/p/w500/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg'),
+(5,	'Pulp Fiction',	1994, 'https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg'),
+(6,	'Inglorious Basterds',	2009, 'https://image.tmdb.org/t/p/w500/7sfbEnaARXDDhKm0CZ7D7uc2sbo.jpg');
 
 -- 2025-12-12 20:27:43 UTC
 

@@ -21,12 +21,12 @@ def get_db_connection():
 def get_movies():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, title, year FROM movies;")
+    cur.execute("SELECT id, title, year, poster_url FROM movies;")
     result = cur.fetchall()
     cur.close()
     conn.close()
     
-    output = [{"id": int(row[0]), "title": row[1], "year": int(row[2])} for row in result]
+    output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
     return jsonify(output), 200
 
 @app.route("/movies/<int:movie_id>", methods=["GET"])
@@ -37,7 +37,7 @@ def get_movie_by_id(movie_id):
     cur = conn.cursor()
     
     if level == 'basic':
-        cur.execute("SELECT id, title, year FROM movies WHERE id = %s;", (movie_id,))
+        cur.execute("SELECT id, title, year, poster_url FROM movies WHERE id = %s;", (movie_id,))
         result = cur.fetchone()
         cur.close()
         conn.close()
@@ -45,10 +45,10 @@ def get_movie_by_id(movie_id):
         if not result:
             return Response(status=404)
         
-        output = {"id": int(result[0]), "title": result[1], "year": int(result[2])}
+        output = {"id": int(result[0]), "title": result[1], "year": int(result[2]), "poster_url": result[3]}
     else:
         cur.execute("""
-            SELECT movies.id, movies.title, movies.year, directors.name, genres.name, movie_details.synopsis 
+            SELECT movies.id, movies.title, movies.year, movies.poster_url, directors.name, genres.name, movie_details.synopsis 
             FROM movies 
             INNER JOIN movie_details ON movies.id = movie_details.id
             INNER JOIN directors ON movie_details.director_id = directors.id
@@ -66,9 +66,10 @@ def get_movie_by_id(movie_id):
             "id": int(result[0]),
             "title": result[1],
             "year": int(result[2]),
-            "director": result[3].strip() if result[3] else None,
-            "genre": result[4].strip() if result[4] else None,
-            "synopsis": result[5].strip() if result[5] else None
+            "poster_url": result[3],
+            "director": result[4].strip() if result[4] else None,
+            "genre": result[5].strip() if result[5] else None,
+            "synopsis": result[6].strip() if result[6] else None
         }
     
     return jsonify(output), 200
@@ -80,7 +81,7 @@ def get_user_watchlist(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT m.id, m.title, m.year 
+        SELECT m.id, m.title, m.year, m.poster_url 
         FROM movies m 
         JOIN watchlist w ON m.id = w.movie_id 
         WHERE w.user_id = %s
@@ -90,7 +91,7 @@ def get_user_watchlist(user_id):
     cur.close()
     conn.close()
     
-    output = [{"id": int(row[0]), "title": row[1], "year": int(row[2])} for row in result]
+    output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
     return jsonify(output), 200
 
 @app.route("/users/<int:user_id>/watchlist", methods=["POST"])
@@ -139,7 +140,7 @@ def get_user_viewed(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT m.id, m.title, m.year, v.rating 
+        SELECT m.id, m.title, m.year, m.poster_url, v.rating 
         FROM movies m 
         JOIN viewed v ON m.id = v.movie_id 
         WHERE v.user_id = %s
@@ -150,7 +151,7 @@ def get_user_viewed(user_id):
     conn.close()
     
     output = [
-        {"id": int(row[0]), "title": row[1], "year": int(row[2]), "rating": row[3]} 
+        {"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3], "rating": row[4]} 
         for row in result
     ]
     return jsonify(output), 200

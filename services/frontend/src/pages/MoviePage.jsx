@@ -70,7 +70,7 @@ export default function MoviePage() {
     );
   }
 
-  // Generate gradient based on movie id
+  // Fallback gradient if no poster
   const gradients = [
     'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
     'linear-gradient(135deg, #2d132c 0%, #3e1f47 50%, #4a2c4a 100%)',
@@ -80,16 +80,27 @@ export default function MoviePage() {
     'linear-gradient(135deg, #1a0a0a 0%, #2d1515 50%, #3d1a1a 100%)',
   ];
   const gradient = gradients[movie.id % gradients.length];
+  const hasPoster = movie.poster_url;
 
   return (
     <div className="movie-page">
-      <div className="movie-hero" style={{ background: gradient }}>
+      <div className="movie-hero" style={{ background: hasPoster ? '#0a0a0a' : gradient }}>
+        {hasPoster && (
+          <div 
+            className="hero-background"
+            style={{ backgroundImage: `url(${movie.poster_url})` }}
+          />
+        )}
         <div className="hero-overlay"></div>
         <Link to="/" className="back-button">← Back</Link>
         
         <div className="hero-content">
           <div className="movie-poster">
-            <span className="poster-initial">{movie.title?.charAt(0) || 'M'}</span>
+            {hasPoster ? (
+              <img src={movie.poster_url} alt={movie.title} className="poster-image" />
+            ) : (
+              <span className="poster-initial">{movie.title?.charAt(0) || 'M'}</span>
+            )}
           </div>
           
           <div className="movie-info">
