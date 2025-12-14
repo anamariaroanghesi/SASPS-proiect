@@ -6,14 +6,18 @@ import os
 app = Flask(__name__)
 CORS(app)
 
+connection = None
+
 def get_db_connection():
     """Helper function to get database connection"""
-    return psycopg2.connect(
-        host="db",
-        database=os.environ["POSTGRES_DB"],
-        user=os.environ["POSTGRES_USER"],
-        password=os.environ["POSTGRES_PASSWORD"]
-    )
+    if (connection == None):
+        connection = psycopg2.connect(
+            host="db",
+            database=os.environ["POSTGRES_DB"],
+            user=os.environ["POSTGRES_USER"],
+            password=os.environ["POSTGRES_PASSWORD"]
+        )
+    return connection
 
 # ==================== MOVIES ====================
 
@@ -36,30 +40,39 @@ def get_movie_by_id(movie_id):
     conn = get_db_connection()
     cur = conn.cursor()
     
-    cur.execute("""
-        SELECT movies.id, movies.title, movies.year, movies.poster_url, directors.name, genres.name, movie_details.synopsis 
-        FROM movies 
-        INNER JOIN movie_details ON movies.id = movie_details.id
-        INNER JOIN directors ON movie_details.director_id = directors.id
-        INNER JOIN genres ON movie_details.genre_id = genres.id
-        WHERE movies.id = %s;
-    """, (movie_id,))
-    result = cur.fetchone()
-    cur.close()
-    conn.close()
-    
-    if not result:
-        return Response(status=404)
-    
-    output = {
-        "id": int(result[0]),
-        "title": result[1],
-        "year": int(result[2]),
-        "poster_url": result[3],
-        "director": result[4].strip() if result[4] else None,
-        "genre": result[5].strip() if result[5] else None,
-        "synopsis": result[6].strip() if result[6] else None
-    }
+    if level == 'basic':
+        cur.execute("SELECT id, title, year, poster_url FROM movies WHERE id = %s;", (movie_id,))
+        result = cur.fetchone()
+        cur.close()
+        
+        if not result:
+            return Response(status=404)
+        
+        output = {"id": int(result[0]), "title": result[1], "year": int(result[2]), "poster_url": result[3]}
+    else:
+        cur.execute("""
+            SELECT movies.id, movies.title, movies.year, movies.poster_url, directors.name, genres.name, movie_details.synopsis 
+            FROM movies 
+            INNER JOIN movie_details ON movies.id = movie_details.id
+            INNER JOIN directors ON movie_details.director_id = directors.id
+            INNER JOIN genres ON movie_details.genre_id = genres.id
+            WHERE movies.id = %s;
+        """, (movie_id,))
+        result = cur.fetchone()
+        cur.close()
+        
+        if not result:
+            return Response(status=404)
+        
+        output = {
+            "id": int(result[0]),
+            "title": result[1],
+            "year": int(result[2]),
+            "poster_url": result[3],
+            "director": result[4].strip() if result[4] else None,
+            "genre": result[5].strip() if result[5] else None,
+            "synopsis": result[6].strip() if result[6] else None
+        }
     
     return jsonify(output), 200
 
@@ -78,7 +91,6 @@ def get_user_watchlist(user_id):
     """, (user_id,))
     result = cur.fetchall()
     cur.close()
-    conn.close()
     
     output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
     return jsonify(output), 200
@@ -101,12 +113,10 @@ def post_user_watchlist(user_id):
         )
         conn.commit()
         cur.close()
-        conn.close()
         return jsonify({"message": "Added to watchlist"}), 201
     except psycopg2.IntegrityError:
         conn.rollback()
         cur.close()
-        conn.close()
         return jsonify({"message": "Already in watchlist"}), 200
 
 @app.route("/users/<int:user_id>/watchlist/<int:movie_id>", methods=["DELETE"])
@@ -119,7 +129,6 @@ def delete_movie_from_watchlist(user_id, movie_id):
     )
     conn.commit()
     cur.close()
-    conn.close()
     return jsonify({"message": "Removed from watchlist"}), 200
 
 # ==================== VIEWED ====================
@@ -137,7 +146,6 @@ def get_user_viewed(user_id):
     """, (user_id,))
     result = cur.fetchall()
     cur.close()
-    conn.close()
     
     output = [
         {"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3], "rating": row[4]} 
@@ -175,7 +183,6 @@ def post_user_viewed(user_id):
         conn.commit()
         
         cur.close()
-        conn.close()
         return jsonify({"message": "Marked as viewed"}), 201
     except psycopg2.IntegrityError:
         conn.rollback()
@@ -186,7 +193,6 @@ def post_user_viewed(user_id):
         )
         conn.commit()
         cur.close()
-        conn.close()
         return jsonify({"message": "Rating updated"}), 200
 
 @app.route("/users/<int:user_id>/viewed/<int:movie_id>", methods=["DELETE"])
@@ -199,7 +205,6 @@ def delete_movie_from_viewed(user_id, movie_id):
     )
     conn.commit()
     cur.close()
-    conn.close()
     return jsonify({"message": "Removed from viewed"}), 200
 
 if __name__ == '__main__':
