@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import psycopg2
 import os
+import json
 
 def get_db_connection():
     """Helper function to get database connection"""
@@ -12,7 +13,11 @@ def get_db_connection():
         password=os.environ["POSTGRES_PASSWORD"]
     )
 
+
+
 class API:
+
+    _bytesRead: int = 0
     
     def get_movie_list(self):
         conn = get_db_connection()
@@ -23,6 +28,7 @@ class API:
         conn.close()
         
         output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
+        self._bytesRead += len(json.dumps(output))
         return jsonify(output), 200
     
     def get_movie_simple(self, id):
@@ -36,6 +42,7 @@ class API:
             return Response(status=404)
         
         output = {"id": int(result[0]), "title": result[1], "year": int(result[2]), "poster_url": result[3]}
+        self._bytesRead += len(json.dumps(output))
         return jsonify(output), 200
     
     def get_movie_complex(self, id):
@@ -64,6 +71,7 @@ class API:
             "genre": result[5].strip() if result[5] else None,
             "synopsis": result[6].strip() if result[6] else None
         }
+        self._bytesRead += len(json.dumps(output))
         return jsonify(output), 200
     
     def get_watchlist(self, user_id):
@@ -80,6 +88,7 @@ class API:
         cur.close()
         
         output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
+        self._bytesRead += len(json.dumps(output))
         return jsonify(output), 200
     
     def delete_from_list(self, user_id, movie_id, operation):
@@ -127,6 +136,7 @@ class API:
             {"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3], "rating": row[4]} 
             for row in result
         ]
+        self._bytesRead += len(json.dumps(output))
         return jsonify(output), 200
     
     def add_to_viewlist(self, user_id, movie_id, rating):

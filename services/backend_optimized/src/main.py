@@ -12,10 +12,12 @@ api = API()
 
 @app.route("/movies", methods=["GET"])
 def get_movies():
+    app.logger.error("bytesRead is %d", api._bytesRead)
     return api.get_movie_list()
 
 @app.route("/movies/<int:movie_id>", methods=["GET"])
 def get_movie_by_id(movie_id):
+    app.logger.error("bytesRead is %d", api._bytesRead)
     level = request.args.get('level', 'complex')
     
     if level == 'basic':
@@ -27,6 +29,7 @@ def get_movie_by_id(movie_id):
 
 @app.route("/users/<int:user_id>/watchlist", methods=["GET"])
 def get_user_watchlist(user_id):
+    app.logger.error("bytesRead is %d", api._bytesRead)
     return api.get_watchlist(user_id)
 
 @app.route("/users/<int:user_id>/watchlist", methods=["POST"])
@@ -47,6 +50,7 @@ def delete_movie_from_watchlist(user_id, movie_id):
 
 @app.route("/users/<int:user_id>/viewed", methods=["GET"])
 def get_user_viewed(user_id):
+    app.logger.error("bytesRead is %d", api._bytesRead)
     return api.get_viewlist(user_id)
 
 @app.route("/users/<int:user_id>/viewed", methods=["POST"])
