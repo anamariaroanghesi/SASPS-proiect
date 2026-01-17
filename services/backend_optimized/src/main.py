@@ -2,98 +2,32 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import psycopg2
 import os
+from api import API
 
 app = Flask(__name__)
 CORS(app)
-
-connection = None
-
-def get_db_connection():
-    """Helper function to get database connection"""
-    if (connection == None):
-        connection = psycopg2.connect(
-            host="db",
-            database=os.environ["POSTGRES_DB"],
-            user=os.environ["POSTGRES_USER"],
-            password=os.environ["POSTGRES_PASSWORD"]
-        )
-    return connection
+api = API()
 
 # ==================== MOVIES ====================
 
 @app.route("/movies", methods=["GET"])
 def get_movies():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, title, year, poster_url FROM movies;")
-    result = cur.fetchall()
-    cur.close()
-    conn.close()
-    
-    output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
-    return jsonify(output), 200
+    return api.get_movie_list()
 
 @app.route("/movies/<int:movie_id>", methods=["GET"])
 def get_movie_by_id(movie_id):
     level = request.args.get('level', 'complex')
     
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
     if level == 'basic':
-        cur.execute("SELECT id, title, year, poster_url FROM movies WHERE id = %s;", (movie_id,))
-        result = cur.fetchone()
-        cur.close()
-        
-        if not result:
-            return Response(status=404)
-        
-        output = {"id": int(result[0]), "title": result[1], "year": int(result[2]), "poster_url": result[3]}
+        return api.get_movie_simple(movie_id)
     else:
-        cur.execute("""
-            SELECT movies.id, movies.title, movies.year, movies.poster_url, directors.name, genres.name, movie_details.synopsis 
-            FROM movies 
-            INNER JOIN movie_details ON movies.id = movie_details.id
-            INNER JOIN directors ON movie_details.director_id = directors.id
-            INNER JOIN genres ON movie_details.genre_id = genres.id
-            WHERE movies.id = %s;
-        """, (movie_id,))
-        result = cur.fetchone()
-        cur.close()
-        
-        if not result:
-            return Response(status=404)
-        
-        output = {
-            "id": int(result[0]),
-            "title": result[1],
-            "year": int(result[2]),
-            "poster_url": result[3],
-            "director": result[4].strip() if result[4] else None,
-            "genre": result[5].strip() if result[5] else None,
-            "synopsis": result[6].strip() if result[6] else None
-        }
-    
-    return jsonify(output), 200
+        return api.get_movie_complex(movie_id)
 
 # ==================== WATCHLIST ====================
 
 @app.route("/users/<int:user_id>/watchlist", methods=["GET"])
 def get_user_watchlist(user_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT m.id, m.title, m.year, m.poster_url 
-        FROM movies m 
-        JOIN watchlist w ON m.id = w.movie_id 
-        WHERE w.user_id = %s
-        ORDER BY w.added_at DESC;
-    """, (user_id,))
-    result = cur.fetchall()
-    cur.close()
-    
-    output = [{"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3]} for row in result]
-    return jsonify(output), 200
+    return api.get_watchlist(user_id)
 
 @app.route("/users/<int:user_id>/watchlist", methods=["POST"])
 def post_user_watchlist(user_id):
@@ -103,55 +37,17 @@ def post_user_watchlist(user_id):
     if not movie_id:
         return jsonify({"error": "movie_id is required"}), 400
     
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    try:
-        cur.execute(
-            "INSERT INTO watchlist (user_id, movie_id) VALUES (%s, %s);",
-            (user_id, movie_id)
-        )
-        conn.commit()
-        cur.close()
-        return jsonify({"message": "Added to watchlist"}), 201
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        cur.close()
-        return jsonify({"message": "Already in watchlist"}), 200
+    return api.add_to_watchlist(user_id, movie_id)
 
 @app.route("/users/<int:user_id>/watchlist/<int:movie_id>", methods=["DELETE"])
 def delete_movie_from_watchlist(user_id, movie_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM watchlist WHERE user_id = %s AND movie_id = %s;",
-        (user_id, movie_id)
-    )
-    conn.commit()
-    cur.close()
-    return jsonify({"message": "Removed from watchlist"}), 200
+    return api.delete_from_list(user_id, movie_id, "watchlist")
 
 # ==================== VIEWED ====================
 
 @app.route("/users/<int:user_id>/viewed", methods=["GET"])
 def get_user_viewed(user_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT m.id, m.title, m.year, m.poster_url, v.rating 
-        FROM movies m 
-        JOIN viewed v ON m.id = v.movie_id 
-        WHERE v.user_id = %s
-        ORDER BY v.viewed_at DESC;
-    """, (user_id,))
-    result = cur.fetchall()
-    cur.close()
-    
-    output = [
-        {"id": int(row[0]), "title": row[1], "year": int(row[2]), "poster_url": row[3], "rating": row[4]} 
-        for row in result
-    ]
-    return jsonify(output), 200
+    return api.get_viewlist(user_id)
 
 @app.route("/users/<int:user_id>/viewed", methods=["POST"])
 def post_user_viewed(user_id):
@@ -164,48 +60,11 @@ def post_user_viewed(user_id):
     if not rating or rating < 1 or rating > 5:
         return jsonify({"error": "rating must be between 1 and 5"}), 400
     
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    try:
-        # Try to insert
-        cur.execute(
-            "INSERT INTO viewed (user_id, movie_id, rating) VALUES (%s, %s, %s);",
-            (user_id, movie_id, rating)
-        )
-        conn.commit()
-        
-        # Also remove from watchlist if present
-        cur.execute(
-            "DELETE FROM watchlist WHERE user_id = %s AND movie_id = %s;",
-            (user_id, movie_id)
-        )
-        conn.commit()
-        
-        cur.close()
-        return jsonify({"message": "Marked as viewed"}), 201
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        # Already exists, update the rating
-        cur.execute(
-            "UPDATE viewed SET rating = %s, viewed_at = CURRENT_TIMESTAMP WHERE user_id = %s AND movie_id = %s;",
-            (rating, user_id, movie_id)
-        )
-        conn.commit()
-        cur.close()
-        return jsonify({"message": "Rating updated"}), 200
+    return api.add_to_viewlist(user_id, movie_id, rating)
 
 @app.route("/users/<int:user_id>/viewed/<int:movie_id>", methods=["DELETE"])
 def delete_movie_from_viewed(user_id, movie_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM viewed WHERE user_id = %s AND movie_id = %s;",
-        (user_id, movie_id)
-    )
-    conn.commit()
-    cur.close()
-    return jsonify({"message": "Removed from viewed"}), 200
+    return api.delete_from_list(user_id, movie_id, "viewed")
 
 if __name__ == '__main__':
     app.run('0.0.0.0', debug=True)

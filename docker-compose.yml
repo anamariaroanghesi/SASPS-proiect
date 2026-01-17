@@ -23,7 +23,7 @@ services:
   flask_api:
     depends_on:
       - postgres_db
-    build: ./services/backend_simple/
+    build: ./services/backend_optimized/
     ports:
       - 5000:5000
     networks:
